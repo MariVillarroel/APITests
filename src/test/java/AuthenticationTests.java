@@ -1,4 +1,5 @@
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -7,99 +8,87 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.Matchers.hasKey;
 
-public class RestAssuredBookerCrud {
+public class AuthenticationTests {
 
     @Test
-    public void createBookingTest() {
+    public void createAuthTokenWithValidCredentialsTest() throws JsonProcessingException {
         RestAssured.baseURI = "https://restful-booker.herokuapp.com";
 
-        String payload = "{" +
-                "\"firstname\":\"Jorge\"," +
-                "\"lastname\":\"Garcia\"," +
-                "\"totalprice\":150," +
-                "\"depositpaid\":true," +
-                "\"bookingdates\":{" +
-                "   \"checkin\":\"2024-01-01\"," +
-                "   \"checkout\":\"2024-01-05\"" +
-                "}," +
-                "\"additionalneeds\":\"Breakfast\"" +
-                "}";
+        // Usando el mismo estilo del código base - sin Lombok en los tests
+        String payload = "{\"username\":\"admin\",\"password\":\"password123\"}";
 
         Response response = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
                 .body(payload)
-                .when().post("/booking");
+                .when().post("/auth");
 
         response.then().assertThat().statusCode(200);
         response.then().log().body();
 
-        response.then().assertThat().body("$", hasKey("bookingid"));
-        response.then().assertThat().body("booking.firstname", Matchers.equalTo("Jorge"));
+        response.then().assertThat().body("$", hasKey("token"));
+        response.then().assertThat().body("token", Matchers.notNullValue());
+        response.then().assertThat().body("token", Matchers.not(Matchers.equalTo("")));
     }
 
     @Test
-    public void getBookingTest() {
+    public void createAuthTokenWithInvalidUsernameTest() {
         RestAssured.baseURI = "https://restful-booker.herokuapp.com";
 
-        Response response = RestAssured.given()
-                .accept(ContentType.JSON)
-                .when().get("/booking/1");
-
-        response.then().assertThat().statusCode(200);
-        response.then().log().body();
-
-        response.then().assertThat().body("$", hasKey("firstname"));
-        response.then().assertThat().body("$", hasKey("lastname"));
-    }
-
-    @Test
-    public void getBookingsTest() {
-        RestAssured.baseURI = "https://restful-booker.herokuapp.com";
-
-        Response response = RestAssured.given()
-                .accept(ContentType.JSON)
-                .when().get("/booking");
-
-        response.then().assertThat().statusCode(200);
-        response.then().log().body();
-
-        response.then().assertThat().body("[0]", hasKey("bookingid"));
-    }
-
-    @Test
-    public void healthCheckTest() {
-        RestAssured.baseURI = "https://restful-booker.herokuapp.com";
-
-        Response response = RestAssured.given()
-                .when().get("/ping");
-
-        response.then().assertThat().statusCode(201);
-        response.then().assertThat().body(Matchers.equalTo("Created"));
-    }
-
-    @Test
-    public void createBookingWithInvalidDataTest() {
-        RestAssured.baseURI = "https://restful-booker.herokuapp.com";
-
-        String payload = "{\"firstname\":\"Jorge\",\"totalprice\":150}";
+        String payload = "{\"username\":\"invalidUser\",\"password\":\"password123\"}";
 
         Response response = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
                 .body(payload)
-                .when().post("/booking");
+                .when().post("/auth");
+
+        response.then().assertThat().statusCode(200);
+        response.then().log().body();
+    }
+
+    @Test
+    public void createAuthTokenWithInvalidPasswordTest() {
+        RestAssured.baseURI = "https://restful-booker.herokuapp.com";
+
+        String payload = "{\"username\":\"admin\",\"password\":\"wrongpassword\"}";
+
+        Response response = RestAssured.given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(payload)
+                .when().post("/auth");
+
+        response.then().assertThat().statusCode(200);
+        response.then().log().body();
+    }
+
+    @Test
+    public void createAuthTokenWithMissingUsernameTest() {
+        RestAssured.baseURI = "https://restful-booker.herokuapp.com";
+
+        String payload = "{\"password\":\"password123\"}";
+
+        Response response = RestAssured.given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(payload)
+                .when().post("/auth");
 
         response.then().log().body();
     }
 
     @Test
-    public void getNonExistentBookingTest() {
+    public void createAuthTokenWithMissingPasswordTest() {
         RestAssured.baseURI = "https://restful-booker.herokuapp.com";
 
+        String payload = "{\"username\":\"admin\"}";
+
         Response response = RestAssured.given()
+                .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .when().get("/booking/999999");
+                .body(payload)
+                .when().post("/auth");
 
         response.then().log().body();
     }
